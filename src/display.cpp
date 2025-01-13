@@ -171,14 +171,14 @@ void Display::initialize_hardware()
     ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, false));
     ESP_ERROR_CHECK(esp_lcd_panel_set_gap(panel_handle, 0, 35));
 
-    // BELOW
-    // DOESN'T COMPILE WITH ESP32 + Arduino framework 3.1.1
-    //
     // Set extra configurations e.g., gamma control with the underlying IO handle
     // Please consult your manufacturer for special commands and corresponding values
     // WARNING: Command descriptions given by ChatGPT, since the original code had no documentation for these magic constants
-    /*
-    const std::array<lcd_message, 14> init_messages = std::to_array<lcd_message>({
+    // Set extra configurations e.g., gamma control with the underlying IO handle
+    // Please consult your manufacturer for special commands and corresponding values
+    // WARNING: Command descriptions given by ChatGPT, since the original code had no documentation for these magic constants
+    
+    const lcd_message init_messages[] = {
         {0x11, {0}, 0 | 0x80}, // Turn off display controller sleep mode. 0x80 indicates data command (not control command)
         {0x3A, {0X05}, 1}, // Specify 16-bit color pixel format (RGB565)
         {0xB2, {0X0B, 0X0B, 0X00, 0X33, 0X33}, 5}, // Adjust frame rate 
@@ -193,16 +193,16 @@ void Display::initialize_hardware()
         {0xD6, {0XA1}, 1}, // Set display function control 
         {0xE0, {0XF0, 0X05, 0X0A, 0X06, 0X06, 0X03, 0X2B, 0X32, 0X43, 0X36, 0X11, 0X10, 0X2B, 0X32}, 14}, // Set gamma correction coefficients for positive gamma
         {0xE1, {0XF0, 0X08, 0X0C, 0X0B, 0X09, 0X24, 0X2B, 0X22, 0X43, 0X38, 0X15, 0X16, 0X2F, 0X37}, 14} // Set gamma correction coefficients for negative gamma 
-    });
-   
+    };
 
-    for (const auto& message : init_messages) {
-        ESP_ERROR_CHECK(esp_lcd_panel_io_tx_param(io_handle, message.command, message.parameters.data(), message.length & 0x7f)); // No idea why I have this and here
-        if (message.length & 0x80) { // No idea about this and either
-            delay(120); // No idea why I gotta sleep here
+    for (size_t i = 0; i < sizeof(init_messages) / sizeof(init_messages[0]); i++) {
+        const auto& message = init_messages[i];
+        ESP_ERROR_CHECK(esp_lcd_panel_io_tx_param(io_handle, message.command, 
+            message.parameters.data(), message.length & 0x7f));
+        if (message.length & 0x80) {
+            delay(120);
         }
-    }
-     */
+    } 
 }
 
 Display::~Display()
