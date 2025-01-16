@@ -23,7 +23,7 @@ Display::Display()
 
     initialize_hardware();
 
-    backlight.set_brightness(50);
+    backlight.set_brightness(255);
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
 }
 
@@ -68,21 +68,22 @@ void Display::initialize_lvgl()
     display = lv_display_create(height, width);
 
     // Create bufferydoos
-    // It's recommended to choose the size of the draw buffer(s) to be at least 1/10 screen sized
+    // It's recommended to choose the size of the draw buffer(s) to be at least 1/10 screen sized - as we use PSRAM and have 8MB, we use the full screen size as buffer
     // https://github.com/lvgl/lvgl/blob/5ce363464fc81dec5378fc02a341b35786f0946b/docs/integration/driver/display/lcd_stm32_guide.rst
     // https://github.com/espressif/esp-idf/blob/b3f7e2c8a4d354df8ef8558ea7caddc07283a57b/examples/peripherals/lcd/i80_controller/main/i80_controller_example_main.c#L453
     // https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/system/mm_sync.html#memory-allocation-helper
     
     const auto buffer_size = height * width * lv_color_format_get_size(lv_display_get_color_format(display));
 
-    draw_buffers.first = heap_caps_malloc(buffer_size, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+    // Using PSRAM for the draw buffers
+    draw_buffers.first = heap_caps_malloc(buffer_size, MALLOC_CAP_DMA | MALLOC_CAP_SPIRAM);
     if (!draw_buffers.first)
     {
         LV_LOG_ERROR("display draw buffer malloc failed");
         return;
     }
 
-    draw_buffers.second = heap_caps_malloc(buffer_size, MALLOC_CAP_DMA | MALLOC_CAP_INTERNAL);
+    draw_buffers.second = heap_caps_malloc(buffer_size, MALLOC_CAP_DMA | MALLOC_CAP_SPIRAM);
     if (!draw_buffers.second)
     {
         LV_LOG_ERROR("display buffer malloc failed");
@@ -251,6 +252,16 @@ void Display::init()
     Display::get();
 }
 
-void Backlight::set_brightness(uint8_t level) {
-    analogWrite(pin, level);
+void Backlight::set_brightness(uint8_t newLevel) {
+    uint8_t _newLevel = std::min(255, std::max(0, static_cast<int>(newLevel)));
+    
+    while(level != _newLevel) {
+        if(level < _newLevel) {
+            level++;
+        } else {
+            level--;
+        }
+        analogWrite(pin, level);
+        delay(30); // 30ms
+    }
 }
